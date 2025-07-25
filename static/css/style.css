@@ -8,30 +8,232 @@ body {
     max-width: 1200px;
 }
 
+/* Стили для карточек репозиториев */
+.repo-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--bs-border-color);
+}
+
+.repo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-footer {
+    background-color: var(--bs-secondary-bg);
+    border-top: 1px solid var(--bs-border-color);
+}
+
+/* Стили для кастомных модальных окон */
+.custom-modal .modal-content {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.custom-modal .modal-header {
+    background-color: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+.custom-modal .modal-footer {
+    background-color: var(--bs-secondary-bg);
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.custom-modal .modal-body {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+.custom-modal .modal-content {
+    background-color: var(--bs-body-bg);
+}
+
+.custom-modal .btn-close {
+    filter: var(--bs-btn-close-white-filter);
+}
+
+/* Стили для навигации */
+.navbar-brand {
+    font-weight: 600;
+}
+
+.nav-link {
+    transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Стили для хлебных крошек */
 .breadcrumb {
     background-color: var(--bs-secondary-bg);
     padding: 0.75rem 1rem;
     border-radius: 0.375rem;
 }
 
-.card {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+/* Стили для кода в инструкциях */
+pre.bg-light {
+    background-color: var(--bs-secondary-bg) !important;
     border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+/* Стили для инструкций в репозитории */
+.repo-instructions {
+    background-color: var(--bs-secondary-bg) !important;
+    border: 1px solid var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+    padding: 1rem !important;
+    border-radius: 0.375rem !important;
+    font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.875rem;
+    overflow-x: auto;
+}
+
+[data-bs-theme="dark"] .repo-instructions {
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+    color: #e9ecef !important;
+}
+/* Темная тема */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #1a1d20;
+    --bs-body-color: #e9ecef;
+    --bs-secondary-bg: #2d3135;
+    --bs-border-color: #495057;
+    --bs-heading-color: #e9ecef;
+    --bs-code-color: #e9ecef;
+    --bs-secondary-color: #adb5bd;
+    --bs-btn-close-white-filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #2d3135;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .card-header {
+    background-color: #343a40;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .list-group-item {
+    background-color: #2d3135;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .list-group-item-action {
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .list-group-item-action:hover {
+    background-color: #343a40;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .alert-info {
+    color: #78c9f5;
+    background-color: #123456;
+    border-color: #1a5a8a;
+}
+
+[data-bs-theme="dark"] .breadcrumb {
+    background-color: #343a40;
+}
+
+[data-bs-theme="dark"] a {
+    color: #6ea8fe;
+}
+
+[data-bs-theme="dark"] a:hover {
+    color: #8bb9fe;
+}
+
+[data-bs-theme="dark"] .modal-content {
+    background-color: #2d3135;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .modal-header {
+    background-color: #343a40;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .modal-footer {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .modal-body {
+    background-color: #2d3135;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] pre.bg-light {
+    background-color: #343a40 !important;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+/* Стили для README.md */
+.readme-content {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 2rem;
+    padding-top: 1rem;
+}
+
+.readme-content h1, .readme-content h2, .readme-content h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--bs-heading-color);
+}
+
+.readme-content p {
     margin-bottom: 1rem;
+    line-height: 1.6;
 }
 
-.card-header {
+.readme-content ul {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.readme-content li {
+    margin-bottom: 0.25rem;
+}
+
+.readme-content a {
+    text-decoration: underline;
+}
+
+.readme-content strong {
+    font-weight: bold;
+}
+
+.readme-content em {
+    font-style: italic;
+}
+
+.readme-content table {
+    width: 100%;
+    margin: 1rem 0;
+    border-collapse: collapse;
+}
+
+.readme-content table th,
+.readme-content table td {
+    padding: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.readme-content table th {
     background-color: var(--bs-secondary-bg);
-    border-bottom: 1px solid var(--bs-border-color);
-    font-weight: 500;
-}
-
-.list-group-item-action:hover {
-    background-color: var(--bs-secondary-bg);
-}
-
-.navbar-brand {
-    font-weight: 600;
 }
 
 /* Стили для кода */
@@ -47,37 +249,6 @@ pre, .highlight {
     padding: 1rem;
 }
 
-/* Специальные стили для requirements.txt */
-.highlight.language-text {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-}
-
-[data-bs-theme="dark"] .highlight.language-text {
-    background-color: #2d2d2d;
-    border: 1px solid #495057;
-}
-
-/* Стили для информации о кодировке */
-.language-badge {
-    font-size: 0.75rem;
-    font-weight: normal;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Улучшенные стили для текстовых файлов */
-.file-content {
-    padding: 1rem;
-    line-height: 1.4;
-    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 0.9rem;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-
 /* Кнопка копирования кода - для файлов (с текстом) */
 .code-header {
     background-color: var(--bs-secondary-bg);
@@ -90,7 +261,6 @@ pre, .highlight {
     justify-content: space-between;
     align-items: center;
 }
-
 
 .code-block-wrapper {
     margin: 1rem 0;
@@ -163,176 +333,32 @@ pre, .highlight {
     font-family: sans-serif;
 }
 
-/* Темная тема */
-[data-bs-theme="dark"] {
-    --bs-body-bg: #1a1d20;
-    --bs-body-color: #e9ecef;
-    --bs-secondary-bg: #2d3135;
-    --bs-border-color: #495057;
-    --bs-heading-color: #e9ecef;
-    --bs-code-color: #e9ecef;
-    --bs-secondary-color: #adb5bd;
-}
-
-[data-bs-theme="dark"] .card {
-    background-color: #2d3135;
-    border-color: #495057;
-}
-
-[data-bs-theme="dark"] .card-header {
+/* Темные стили для форм в модальных окнах */
+[data-bs-theme="dark"] .form-control {
     background-color: #343a40;
     border-color: #495057;
     color: #e9ecef;
 }
 
-[data-bs-theme="dark"] .list-group-item {
-    background-color: #2d3135;
+[data-bs-theme="dark"] .form-control:focus {
+    background-color: #343a40;
+    border-color: #6ea8fe;
+    color: #e9ecef;
+    box-shadow: 0 0 0 0.25rem rgba(110, 168, 254, 0.25);
+}
+
+[data-bs-theme="dark"] .form-check-input {
+    background-color: #343a40;
     border-color: #495057;
-    color: #e9ecef;
 }
 
-[data-bs-theme="dark"] .list-group-item-action {
-    color: #e9ecef;
+[data-bs-theme="dark"] .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
 }
 
-[data-bs-theme="dark"] .list-group-item-action:hover {
-    background-color: #343a40;
-    color: #e9ecef;
-}
-
-[data-bs-theme="dark"] .alert-info {
-    color: #78c9f5;
-    background-color: #123456;
-    border-color: #1a5a8a;
-}
-
-[data-bs-theme="dark"] .breadcrumb {
-    background-color: #343a40;
-}
-
-[data-bs-theme="dark"] a {
-    color: #6ea8fe;
-}
-
-[data-bs-theme="dark"] a:hover {
-    color: #8bb9fe;
-}
-
-/* Стили для README.md */
-.readme-content {
-    border-top: 1px solid var(--bs-border-color);
-    margin-top: 2rem;
-    padding-top: 1rem;
-}
-
-.readme-content h1, .readme-content h2, .readme-content h3 {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-    color: var(--bs-heading-color);
-}
-
-.readme-content p {
-    margin-bottom: 1rem;
-    line-height: 1.6;
-}
-
-.readme-content ul {
-    margin-bottom: 1rem;
-    padding-left: 2rem;
-}
-
-.readme-content li {
-    margin-bottom: 0.25rem;
-}
-
-.readme-content a {
-    text-decoration: underline;
-}
-
-.readme-content strong {
-    font-weight: bold;
-}
-
-.readme-content em {
-    font-style: italic;
-}
-
-.readme-content table {
-    width: 100%;
-    margin: 1rem 0;
-    border-collapse: collapse;
-}
-
-.readme-content table th,
-.readme-content table td {
-    padding: 0.5rem;
-    border: 1px solid var(--bs-border-color);
-}
-
-.readme-content table th {
-    background-color: var(--bs-secondary-bg);
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .container {
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-    }
-
-    .card-body {
-        padding: 0.75rem;
-    }
-
-    .breadcrumb {
-        font-size: 0.875rem;
-        padding: 0.5rem 0.75rem;
-    }
-
-    /* Сворачиваем боковую панель на мобильных */
-    .row {
-        flex-direction: column;
-    }
-
-    .col-md-4, .col-md-8 {
-        width: 100%;
-    }
-
-    .mt-4 {
-        margin-top: 1rem !important;
-    }
-
-    .mb-1 {
-        margin-bottom: 0.25rem !important;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-    }
-
-    .navbar-brand {
-        font-size: 1.1rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .container {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-
-    .card-body {
-        padding: 0.5rem;
-    }
-
-    .code-header, .file-content {
-        padding: 0.75rem;
-    }
-
-    .copy-btn {
-        font-size: 0.75rem;
-        padding: 0.125rem 0.25rem;
-    }
+[data-bs-theme="dark"] .form-text {
+    color: #adb5bd;
 }
 
 /* Подсветка синтаксиса - светлая тема */
@@ -465,4 +491,66 @@ pre, .highlight {
 .language-badge {
     font-size: 0.75rem;
     font-weight: normal;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .breadcrumb {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    /* Сворачиваем боковую панель на мобильных */
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-4, .col-md-8 {
+        width: 100%;
+    }
+    
+    .mt-4 {
+        margin-top: 1rem !important;
+    }
+    
+    .mb-1 {
+        margin-bottom: 0.25rem !important;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 0.5rem;
+    }
+    
+    .code-header, .file-content {
+        padding: 0.75rem;
+    }
+    
+    .copy-btn {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.25rem;
+    }
 }

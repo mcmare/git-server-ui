@@ -13,7 +13,12 @@ import chardet
 import subprocess
 import shutil
 from datetime import datetime
-from urllib.parse import quote
+import traceback
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Получаем абсолютный путь к директории проекта
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -45,7 +50,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=False)  # Для подтверждения администратором
+    is_active = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -85,7 +90,7 @@ with app.app_context():
     # Создаем администратора, если его нет
     admin = User.query.filter_by(username='admin').first()
     if not admin:
-        admin = User(username='admin', email='admin@mcmare.ru', is_admin=True, is_active=True)
+        admin = User(username='admin', email='admin@example.com', is_admin=True, is_active=True)
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
@@ -93,7 +98,6 @@ with app.app_context():
 
 # Функции для работы с файлами (остаются без изменений)
 def detect_encoding(file_path):
-    """Определяет кодировку файла"""
     try:
         with open(file_path, 'rb') as f:
             raw_data = f.read(10000)
@@ -108,7 +112,6 @@ def detect_encoding(file_path):
 
 
 def read_text_file(file_path):
-    """Читает текстовый файл с автоматическим определением кодировки"""
     encodings_to_try = ['utf-8', 'utf-8-sig', 'cp1251', 'cp1252', 'iso-8859-1', 'ascii']
     detected_encoding = detect_encoding(file_path)
     if detected_encoding:
@@ -133,7 +136,6 @@ def read_text_file(file_path):
 
 
 def is_text_file(file_path):
-    """Проверяет, является ли файл текстовым"""
     text_extensions = {
         'txt', 'md', 'markdown', 'rst', 'log', 'csv', 'json', 'xml', 'yml', 'yaml',
         'py', 'js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'sass', 'less',
@@ -164,7 +166,6 @@ def is_text_file(file_path):
 
 
 def get_file_content(repo_path, file_path):
-    """Получить содержимое файла с подсветкой синтаксиса"""
     full_path = os.path.join(repo_path, file_path)
     if not os.path.exists(full_path):
         return None
@@ -244,7 +245,6 @@ def get_file_content(repo_path, file_path):
 
 
 def get_readme_content(repo_path):
-    """Получить содержимое README.md с форматированием и подсветкой кода"""
     readme_files = ['README.md', 'readme.md', 'Readme.md']
 
     for readme_file in readme_files:
@@ -288,8 +288,7 @@ def get_readme_content(repo_path):
     return None
 
 
-# 🛡️ Маршруты аутентификации
-
+# Маршруты аутентификации
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -298,7 +297,6 @@ def register():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        # Проверки
         if password != confirm_password:
             flash('Пароли не совпадают', 'error')
             return render_template('register.html')
@@ -315,7 +313,6 @@ def register():
             flash('Пользователь с таким email уже существует', 'error')
             return render_template('register.html')
 
-        # Создаем пользователя (неактивного)
         user = User(username=username, email=email, is_active=False)
         user.set_password(password)
         db.session.add(user)
@@ -357,8 +354,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-# 👑 Админ-панель
-
+# Админ-панель
 @app.route('/admin')
 @login_required
 def admin_panel():
@@ -453,64 +449,12 @@ def delete_user(user_id):
     return jsonify({'message': f'Пользователь {user.username} удален'})
 
 
-# 🚀 API для управления репозиториями
-
-@app.route('/api/repos', methods=['GET'])
-@login_required
-def api_list_repos():
-    """API: Получить список репозиториев пользователя"""
-    if current_user.is_admin:
-        repos = Repository.query.all()
-    else:
-        repos = Repository.query.filter_by(owner_id=current_user.id).all()
-
-    result = []
-    for repo in repos:
-        repo_path = os.path.join(REPOS_DIR, repo.name)
-        if os.path.exists(repo_path):
-            try:
-                git_repo = git.Repo(repo_path)
-                last_commit = next(git_repo.iter_commits(max_count=1))
-                result.append({
-                    'id': repo.id,
-                    'name': repo.name,
-                    'description': repo.description,
-                    'is_public': repo.is_public,
-                    'owner': repo.owner.username,
-                    'last_commit': last_commit.summary,
-                    'last_commit_date': last_commit.committed_datetime.isoformat(),
-                    'branch': git_repo.active_branch.name if not git_repo.head.is_detached else 'detached'
-                })
-            except:
-                result.append({
-                    'id': repo.id,
-                    'name': repo.name,
-                    'description': repo.description,
-                    'is_public': repo.is_public,
-                    'owner': repo.owner.username,
-                    'last_commit': 'Ошибка загрузки',
-                    'last_commit_date': '',
-                    'branch': 'unknown'
-                })
-        else:
-            result.append({
-                'id': repo.id,
-                'name': repo.name,
-                'description': repo.description,
-                'is_public': repo.is_public,
-                'owner': repo.owner.username,
-                'last_commit': 'Репозиторий не найден',
-                'last_commit_date': '',
-                'branch': 'unknown'
-            })
-
-    return jsonify(result)
+# API для управления репозиториями
 
 
 @app.route('/api/repos', methods=['POST'])
 @login_required
 def api_create_repo():
-    """API: Создать новый репозиторий"""
     try:
         data = request.get_json()
         repo_name = data.get('name')
@@ -520,11 +464,9 @@ def api_create_repo():
         if not repo_name:
             return jsonify({'error': 'Не указано имя репозитория'}), 400
 
-        # Проверяем, что репозиторий с таким именем не существует
         if Repository.query.filter_by(name=repo_name).first():
             return jsonify({'error': 'Репозиторий с таким именем уже существует'}), 400
 
-        # Создаем запись в базе данных
         repo = Repository(
             name=repo_name,
             description=description,
@@ -537,6 +479,16 @@ def api_create_repo():
         # Создаем bare репозиторий
         repo_path = os.path.join(REPOS_DIR, repo_name)
         git_repo = git.Repo.init(repo_path, bare=True)
+
+        # Создаем стандартные директории для Git
+        os.makedirs(os.path.join(repo_path, 'refs', 'heads'), exist_ok=True)
+        os.makedirs(os.path.join(repo_path, 'refs', 'tags'), exist_ok=True)
+        os.makedirs(os.path.join(repo_path, 'objects', 'info'), exist_ok=True)
+        os.makedirs(os.path.join(repo_path, 'objects', 'pack'), exist_ok=True)
+
+        # Создаем начальный HEAD файл
+        with open(os.path.join(repo_path, 'HEAD'), 'w') as f:
+            f.write('ref: refs/heads/master\n')
 
         return jsonify({
             'message': f'Репозиторий {repo_name} создан успешно',
@@ -551,17 +503,17 @@ def api_create_repo():
 
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error creating repo: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/repos/<int:repo_id>/clone', methods=['POST'])
 @login_required
 def api_clone_repo(repo_id):
-    """API: Клонировать внешний репозиторий"""
     try:
         repo = Repository.query.get_or_404(repo_id)
 
-        # Проверяем права доступа
         if not current_user.is_admin and repo.owner_id != current_user.id:
             return jsonify({'error': 'Доступ запрещен'}), 403
 
@@ -576,32 +528,29 @@ def api_clone_repo(repo_id):
         if os.path.exists(repo_path):
             return jsonify({'error': 'Репозиторий уже существует'}), 400
 
-        # Клонируем репозиторий
         git.Repo.clone_from(source_url, repo_path, bare=True)
 
         return jsonify({'message': f'Репозиторий клонирован успешно в {repo.name}'}), 201
 
     except Exception as e:
+        logger.error(f"Error cloning repo: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/repos/<int:repo_id>/delete', methods=['DELETE'])
 @login_required
 def api_delete_repo(repo_id):
-    """API: Удалить репозиторий"""
     try:
         repo = Repository.query.get_or_404(repo_id)
 
-        # Проверяем права доступа
         if not current_user.is_admin and repo.owner_id != current_user.id:
             return jsonify({'error': 'Доступ запрещен'}), 403
 
-        # Удаляем папку с репозиторием
         repo_path = os.path.join(REPOS_DIR, repo.name)
         if os.path.exists(repo_path):
             shutil.rmtree(repo_path)
 
-        # Удаляем запись из базы данных
         db.session.delete(repo)
         db.session.commit()
 
@@ -609,10 +558,14 @@ def api_delete_repo(repo_id):
 
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error deleting repo: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
-# 🌐 Git HTTP протокол (остается без изменений)
+# Git HTTP протокол
+# Обновим Git HTTP маршруты:
+
 @app.route('/git/<repo_name>/info/refs')
 def git_info_refs(repo_name):
     repo_path = os.path.join(REPOS_DIR, repo_name)
@@ -625,16 +578,40 @@ def git_info_refs(repo_name):
         env['GIT_HTTP_EXPORT_ALL'] = '1'
 
         try:
-            result = subprocess.run([
-                'git', 'upload-pack', '--stateless-rpc', '--advertise-refs', repo_path
-            ], capture_output=True, env=env)
+            # Для пустых репозиториев используем git ls-remote
+            if service == 'git-upload-pack':
+                result = subprocess.run([
+                    'git', 'upload-pack', '--stateless-rpc', '--advertise-refs', repo_path
+                ], capture_output=True, env=env)
 
-            response = b'001e# service=git-upload-pack\n0000' + result.stdout
-            return response, 200, {'Content-Type': 'application/x-git-upload-pack-advertisement'}
+                response_data = b'001e# service=git-upload-pack\n0000' + result.stdout
+                return response_data, 200, {'Content-Type': 'application/x-git-upload-pack-advertisement'}
+            elif service == 'git-receive-pack':
+                result = subprocess.run([
+                    'git', 'receive-pack', '--stateless-rpc', '--advertise-refs', repo_path
+                ], capture_output=True, env=env)
+
+                response_data = b'001f# service=git-receive-pack\n0000' + result.stdout
+                return response_data, 200, {'Content-Type': 'application/x-git-receive-pack-advertisement'}
         except Exception as e:
+            logger.error(f"Error in git_info_refs: {e}")
             abort(500)
 
-    abort(400)
+    # Если нет service параметра, показываем refs обычным способом
+    try:
+        git_repo = git.Repo(repo_path)
+        refs_output = ""
+        try:
+            for ref in git_repo.refs:
+                refs_output += f"{ref.commit.hexsha} {ref.path}\n"
+        except:
+            # Для пустых репозиториев
+            refs_output = ""
+
+        return refs_output, 200, {'Content-Type': 'text/plain'}
+    except Exception as e:
+        logger.error(f"Error listing refs: {e}")
+        return "", 200, {'Content-Type': 'text/plain'}
 
 
 @app.route('/git/<repo_name>/git-upload-pack', methods=['POST'])
@@ -645,6 +622,8 @@ def git_upload_pack(repo_name):
 
     try:
         env = os.environ.copy()
+        env['GIT_HTTP_EXPORT_ALL'] = '1'
+
         process = subprocess.Popen([
             'git', 'upload-pack', '--stateless-rpc', repo_path
         ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -652,10 +631,15 @@ def git_upload_pack(repo_name):
         stdout, stderr = process.communicate(request.data)
 
         if process.returncode != 0:
+            logger.error(f"git-upload-pack error: {stderr.decode()}")
+            # Для пустых репозиториев это нормально
+            if b'Reference at' in stderr and b'does not exist' in stderr:
+                return b'', 200, {'Content-Type': 'application/x-git-upload-pack-result'}
             abort(500)
 
         return stdout, 200, {'Content-Type': 'application/x-git-upload-pack-result'}
     except Exception as e:
+        logger.error(f"Error in git_upload_pack: {e}")
         abort(500)
 
 
@@ -667,6 +651,8 @@ def git_receive_pack(repo_name):
 
     try:
         env = os.environ.copy()
+        env['GIT_HTTP_EXPORT_ALL'] = '1'
+
         process = subprocess.Popen([
             'git', 'receive-pack', '--stateless-rpc', repo_path
         ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
@@ -674,15 +660,17 @@ def git_receive_pack(repo_name):
         stdout, stderr = process.communicate(request.data)
 
         if process.returncode != 0:
+            logger.error(f"git-receive-pack error: {stderr.decode()}")
+            # Для новых репозиториев это может быть нормально
             abort(500)
 
         return stdout, 200, {'Content-Type': 'application/x-git-receive-pack-result'}
     except Exception as e:
+        logger.error(f"Error in git_receive_pack: {e}")
         abort(500)
 
 
-# 🎨 Веб-интерфейс (с проверкой аутентификации)
-
+# Веб-интерфейс
 @app.route('/')
 @login_required
 def index():
@@ -697,18 +685,31 @@ def index():
         if os.path.exists(repo_path):
             try:
                 git_repo = git.Repo(repo_path)
-                last_commit = next(git_repo.iter_commits(max_count=1))
+                # Проверяем, есть ли коммиты
+                try:
+                    if git_repo.head.is_valid():
+                        last_commit = next(git_repo.iter_commits(max_count=1))
+                        branch_name = git_repo.active_branch.name if not git_repo.head.is_detached else 'detached'
+                    else:
+                        last_commit = None
+                        branch_name = 'no branches'
+                except ValueError:
+                    last_commit = None
+                    branch_name = 'no branches'
+
                 repo_data.append({
                     'id': repo.id,
                     'name': repo.name,
                     'description': repo.description,
                     'is_public': repo.is_public,
                     'owner': repo.owner.username,
-                    'last_commit': last_commit.summary,
-                    'last_commit_date': last_commit.committed_datetime.strftime('%Y-%m-%d'),
-                    'branch': git_repo.active_branch.name if not git_repo.head.is_detached else 'detached'
+                    'last_commit': last_commit.summary if last_commit else 'Пустой репозиторий',
+                    'last_commit_date': last_commit.committed_datetime.strftime(
+                        '%Y-%m-%d') if last_commit else 'Нет коммитов',
+                    'branch': branch_name
                 })
-            except:
+            except Exception as e:
+                logger.error(f"Error processing repo {repo.name}: {e}")
                 repo_data.append({
                     'id': repo.id,
                     'name': repo.name,
@@ -735,30 +736,39 @@ def index():
     return render_template('index.html', repos=repo_data, theme=theme)
 
 
-# ... остальные маршруты веб-интерфейса (добавим проверку аутентификации) ...
-
 @app.route('/repo/<int:repo_id>')
 @app.route('/repo/<int:repo_id>/<path:subpath>')
 @login_required
 def view_repo(repo_id, subpath=''):
-    repo = db.session.get(Repository, repo_id)
-    if not repo:
-        abort(404)
-
-    # Проверяем права доступа
-    if not repo.is_public and not current_user.is_admin and repo.owner_id != current_user.id:
-        abort(403)
-
-    repo_path = os.path.join(REPOS_DIR, repo.name)
-    if not os.path.exists(repo_path):
-        abort(404)
-
     try:
+        logger.info(f"Viewing repo {repo_id}, subpath: '{subpath}'")
+
+        repo = db.session.get(Repository, repo_id)
+        if not repo:
+            logger.error(f"Repository {repo_id} not found")
+            abort(404)
+
+        logger.info(f"Repository found: {repo.name}, owner: {repo.owner_id}, current user: {current_user.id}")
+
+        if not repo.is_public and not current_user.is_admin and repo.owner_id != current_user.id:
+            logger.error(f"Access denied for user {current_user.id} to repo {repo_id}")
+            abort(403)
+
+        repo_path = os.path.join(REPOS_DIR, repo.name)
+        logger.info(f"Repo path: {repo_path}")
+
+        if not os.path.exists(repo_path):
+            logger.error(f"Repo path does not exist: {repo_path}")
+            abort(404)
+
         git_repo = git.Repo(repo_path)
+        logger.info("Git repo opened successfully")
 
         full_subpath = os.path.join(repo_path, subpath) if subpath else repo_path
+        logger.info(f"Full subpath: {full_subpath}")
 
         if os.path.isfile(full_subpath):
+            logger.info("Path is file, showing file content")
             content = get_file_content(repo_path, subpath)
             if content is None:
                 abort(404)
@@ -770,28 +780,59 @@ def view_repo(repo_id, subpath=''):
                                    theme=theme)
 
         tree_items = []
-        commits = list(git_repo.iter_commits(max_count=10))
+        commits = []
+
+        # Получаем коммиты с обработкой пустых репозиториев
+        try:
+            if git_repo.head.is_valid():  # Проверяем, есть ли HEAD
+                commits = list(git_repo.iter_commits(max_count=10))
+            else:
+                logger.info("Repository is empty (no commits)")
+        except ValueError as e:
+            if "Reference at" in str(e) and "does not exist" in str(e):
+                logger.info("Repository is empty (no branches)")
+            else:
+                raise e
+        except Exception as e:
+            logger.error(f"Error getting commits: {e}")
+
+        logger.info(f"Got {len(commits)} commits")
 
         if subpath:
+            logger.info("Processing subpath")
             try:
                 tree = git_repo.tree()
                 for part in subpath.split('/'):
+                    logger.info(f"Looking for part: {part}")
                     tree = tree[part]
                 if tree.type == 'tree':
                     items = tree
                 else:
+                    logger.info("Subpath is file, showing file content")
                     content = get_file_content(repo_path, subpath)
                     return render_template('file_content.html',
                                            repo=repo,
                                            file_path=subpath,
                                            content=content,
                                            theme=session.get('theme', 'light'))
-            except:
+            except Exception as e:
+                logger.error(f"Error processing subpath: {e}")
+                logger.error(traceback.format_exc())
                 abort(404)
         else:
-            items = git_repo.tree()
+            logger.info("Processing root directory")
+            # Для пустых репозиториев tree() может вызвать ошибку
+            try:
+                if len(commits) > 0:  # Только если есть коммиты
+                    items = git_repo.tree()
+                else:
+                    items = []  # Пустой список для пустого репозитория
+            except Exception as e:
+                logger.info("Repository is empty, no tree available")
+                items = []
 
-        if hasattr(items, 'trees'):
+        if hasattr(items, 'trees') and hasattr(items, 'blobs'):
+            logger.info("Items has trees attribute")
             for item in items.trees:
                 tree_items.append({
                     'name': item.name,
@@ -804,13 +845,17 @@ def view_repo(repo_id, subpath=''):
                     'type': 'file',
                     'path': item.path
                 })
-        else:
+        elif hasattr(items, '__iter__'):
+            logger.info("Items is iterable")
             for item in items:
                 tree_items.append({
                     'name': item.name,
                     'type': 'dir' if item.type == 'tree' else 'file',
                     'path': item.path
                 })
+        else:
+            logger.info("Repository is empty or items not available")
+            tree_items = []
 
         readme_content = None
         if not subpath:
@@ -826,6 +871,7 @@ def view_repo(repo_id, subpath=''):
                 })
 
         theme = session.get('theme', 'light')
+        logger.info("Rendering repo template")
         return render_template('repo.html',
                                repo=repo,
                                git_repo=git_repo,
@@ -837,7 +883,9 @@ def view_repo(repo_id, subpath=''):
                                theme=theme)
 
     except Exception as e:
-        return f"Ошибка при открытии репозитория: {e}", 500
+        logger.error(f"Error in view_repo: {e}")
+        logger.error(traceback.format_exc())
+        return f"Ошибка при открытии репозитория: {e}<br><pre>{traceback.format_exc()}</pre>", 500
 
 
 @app.route('/toggle-theme')

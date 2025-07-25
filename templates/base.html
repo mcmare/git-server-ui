@@ -12,26 +12,129 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-code-branch"></i> Git Web UI
             </a>
-            <div class="d-flex">
-                <a href="{{ url_for('toggle_theme', return_to=request.url) }}" class="btn btn-outline-light btn-sm">
-                    {% if theme == 'dark' %}
-                        <i class="fas fa-sun"></i>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-folder"></i> Репозитории
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_panel') }}">
+                                <i class="fas fa-user-shield"></i> Админ панель
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                        <i class="fas fa-sign-out-alt"></i> Выйти
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
                     {% else %}
-                        <i class="fas fa-moon"></i>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="fas fa-sign-in-alt"></i> Вход
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register') }}">
+                                <i class="fas fa-user-plus"></i> Регистрация
+                            </a>
+                        </li>
                     {% endif %}
-                </a>
+                    <li class="nav-item">
+                        <a href="{{ url_for('toggle_theme', return_to=request.url) }}" class="nav-link">
+                            {% if theme == 'dark' %}
+                                <i class="fas fa-sun"></i>
+                            {% else %}
+                                <i class="fas fa-moon"></i>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
 
     <div class="container py-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
+    </div>
+
+    <!-- Кастомные модальные окна -->
+    <div class="modal fade custom-modal" id="customModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customModalTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="customModalBody">
+                </div>
+                <div class="modal-footer" id="customModalFooter">
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     {% block extra_js %}{% endblock %}
+
+    <script>
+    // Функция для показа кастомного модального окна
+    function showModal(title, body, footer = '') {
+        document.getElementById('customModalTitle').textContent = title;
+        document.getElementById('customModalBody').innerHTML = body;
+        document.getElementById('customModalFooter').innerHTML = footer;
+        var modal = new bootstrap.Modal(document.getElementById('customModal'));
+        modal.show();
+    }
+
+    // Функция для показа подтверждения
+    function showConfirm(title, message, onConfirm) {
+        const body = `<p>${message}</p>`;
+        const footer = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button type="button" class="btn btn-primary" id="confirmButton">Подтвердить</button>
+        `;
+
+        showModal(title, body, footer);
+
+        document.getElementById('confirmButton').onclick = function() {
+            onConfirm();
+            bootstrap.Modal.getInstance(document.getElementById('customModal')).hide();
+        };
+    }
+    </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ file_path }} - {{ repo_name }} - Git Web UI{% endblock %}
+{% block title %}{{ file_path }} - {{ repo.name }} - Git Web UI{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -14,8 +14,8 @@
                     </a>
                 </li>
                 <li class="breadcrumb-item">
-                    <a href="{{ url_for('view_repo', repo_name=repo_name) }}">
-                        <i class="fas fa-book"></i> {{ repo_name }}
+                    <a href="{{ url_for('view_repo', repo_id=repo.id) }}">
+                        <i class="fas fa-book"></i> {{ repo.name }}
                     </a>
                 </li>
                 <li class="breadcrumb-item active" aria-current="page">
@@ -28,7 +28,7 @@
             <h1>
                 <i class="fas fa-file-code"></i> {{ file_path.split('/')[-1] }}
             </h1>
-            <a href="{{ url_for('view_repo', repo_name=repo_name) }}" class="btn btn-outline-secondary">
+            <a href="{{ url_for('view_repo', repo_id=repo.id) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Назад
             </a>
         </div>

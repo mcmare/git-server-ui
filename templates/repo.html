@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ repo_name }} - Git Web UI{% endblock %}
+{% block title %}{{ repo.name }} - Git Web UI{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -14,13 +14,13 @@
                     </a>
                 </li>
                 <li class="breadcrumb-item">
-                    <a href="{{ url_for('view_repo', repo_name=repo_name) }}">
-                        <i class="fas fa-book"></i> {{ repo_name }}
+                    <a href="{{ url_for('view_repo', repo_id=repo.id) }}">
+                        <i class="fas fa-book"></i> {{ repo.name }}
                     </a>
                 </li>
                 {% for part in path_parts %}
                 <li class="breadcrumb-item">
-                    <a href="{{ url_for('view_repo', repo_name=repo_name, subpath=part.path) }}">
+                    <a href="{{ url_for('view_repo', repo_id=repo.id, subpath=part.path) }}">
                         {{ part.name }}
                     </a>
                 </li>
@@ -28,12 +28,17 @@
             </ol>
         </nav>
 
-        <h1>
-            <i class="fas fa-book"></i> {{ repo_name }}
-            {% if current_path %}
-                / {{ current_path }}
-            {% endif %}
-        </h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>
+                <i class="fas fa-book"></i> {{ repo.name }}
+                {% if current_path %}
+                    / {{ current_path }}
+                {% endif %}
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Назад
+            </a>
+        </div>
         <hr>
     </div>
 </div>
@@ -61,6 +66,39 @@
                         </a>
                         {% endfor %}
                     </div>
+                {% elif commits|length == 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Репозиторий пуст. Добавьте файлы и сделайте первый коммит.
+                        <br><br>
+                        <strong>Как начать работать с репозиторием:</strong>
+                        <pre class="repo-instructions mt-2">
+                # Клонируйте репозиторий
+                git clone http://{{ request.host }}/git/{{ repo.name }}
+
+                # Перейдите в папку репозитория
+                cd {{ repo.name }}
+
+                # Добавьте файлы
+                echo "# {{ repo.name }}" > README.md
+                git add README.md
+
+                # Сделайте первый коммит
+                git commit -m "Initial commit"
+
+                # Отправьте изменения
+                git push origin master
+                        </pre>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-lightbulb"></i> После первого коммита страница обновится автоматически
+                            </small>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+                                <i class="fas fa-sync"></i> Обновить
+                            </button>
+                        </div>
+                    </div>
                 {% else %}
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Папка пуста
@@ -78,7 +116,7 @@
                             {{ readme_content|safe }}
                         </div>
                     </div>
-                {% elif not current_path %}
+                {% elif not current_path and commits|length > 0 %}
                     <div class="alert alert-info mt-4">
                         <i class="fas fa-info-circle"></i> Файл README.md не найден в корне репозитория
                     </div>
@@ -108,6 +146,10 @@
                         </div>
                         {% endfor %}
                     </div>
+                {% elif commits|length == 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Нет коммитов. Репозиторий пуст.
+                    </div>
                 {% else %}
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Нет коммитов
@@ -117,36 +159,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function copyCode(button) {
-    const code = button.getAttribute('data-code');
-    navigator.clipboard.writeText(code.replace(/\\n/g, '\n')).then(() => {
-        // Показываем "Скопировано"
-        button.classList.add('copied');
-        setTimeout(() => {
-            button.classList.remove('copied');
-        }, 2000);
-    }).catch(err => {
-        console.error('Ошибка копирования: ', err);
-        // Альтернативный способ копирования
-        const textArea = document.createElement('textarea');
-        textArea.value = code.replace(/\\n/g, '\n');
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            button.classList.add('copied');
-            setTimeout(() => {
-                button.classList.remove('copied');
-            }, 2000);
-        } catch (err) {
-            alert('Не удалось скопировать текст');
-        }
-        document.body.removeChild(textArea);
-    });
-}
-</script>
 {% endblock %}
