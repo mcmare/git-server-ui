@@ -47,6 +47,37 @@ pre, .highlight {
     padding: 1rem;
 }
 
+/* Специальные стили для requirements.txt */
+.highlight.language-text {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+[data-bs-theme="dark"] .highlight.language-text {
+    background-color: #2d2d2d;
+    border: 1px solid #495057;
+}
+
+/* Стили для информации о кодировке */
+.language-badge {
+    font-size: 0.75rem;
+    font-weight: normal;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Улучшенные стили для текстовых файлов */
+.file-content {
+    padding: 1rem;
+    line-height: 1.4;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
 /* Кнопка копирования кода - для файлов (с текстом) */
 .code-header {
     background-color: var(--bs-secondary-bg);

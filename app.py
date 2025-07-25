@@ -6,12 +6,99 @@ from pygments import highlight
 from pygments.lexers import get_lexer_by_name, TextLexer
 from pygments.formatters import HtmlFormatter
 import re
+import chardet
 
-app = Flask(__name__)
+# Получаем абсолютный путь к директории проекта
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+app = Flask(__name__,
+            template_folder=os.path.join(basedir, 'templates'),
+            static_folder=os.path.join(basedir, 'static'))
+
 app.secret_key = 'your_secret_key_here_12345'
-REPOS_DIR = os.path.join(os.getcwd(), 'repos')
+REPOS_DIR = os.path.join(basedir, 'repos')
 
 os.makedirs(REPOS_DIR, exist_ok=True)
+
+
+def detect_encoding(file_path):
+    """Определяет кодировку файла"""
+    try:
+        with open(file_path, 'rb') as f:
+            raw_data = f.read(10000)  # Читаем первые 10KB для определения кодировки
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            confidence = result['confidence']
+
+            # Если уверенность высокая, используем определенную кодировку
+            if confidence > 0.7 and encoding:
+                return encoding
+    except:
+        pass
+
+    # По умолчанию пробуем UTF-8, затем другие популярные кодировки
+    return None
+
+
+def read_text_file(file_path):
+    """Читает текстовый файл с автоматическим определением кодировки"""
+    encodings_to_try = ['utf-8', 'utf-8-sig', 'cp1251', 'cp1252', 'iso-8859-1', 'ascii']
+
+    # Сначала пробуем определить кодировку
+    detected_encoding = detect_encoding(file_path)
+    if detected_encoding:
+        encodings_to_try.insert(0, detected_encoding)
+
+    for encoding in encodings_to_try:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                return f.read(), encoding
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+        except Exception as e:
+            continue
+
+    # Если все кодировки не сработали, пробуем игнорировать ошибки
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read(), 'utf-8 (с игнорированием ошибок)'
+    except:
+        pass
+
+    raise Exception("Не удалось прочитать файл с поддерживаемыми кодировками")
+
+
+def is_text_file(file_path):
+    """Проверяет, является ли файл текстовым"""
+    text_extensions = {
+        'txt', 'md', 'markdown', 'rst', 'log', 'csv', 'json', 'xml', 'yml', 'yaml',
+        'py', 'js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'sass', 'less',
+        'php', 'rb', 'java', 'cpp', 'c', 'h', 'cs', 'go', 'rs', 'swift', 'kt', 'kts',
+        'sh', 'bash', 'sql', 'r', 'pl', 'pm', 'lua', 'scala', 'groovy', 'dart',
+        'ini', 'cfg', 'conf', 'config', 'env', 'toml', 'properties', 'gradle',
+        'bat', 'cmd', 'ps1', 'vbs', 'sql', 'graphql', 'proto'
+    }
+
+    # Проверяем по расширению
+    if '.' in file_path:
+        ext = file_path.split('.')[-1].lower()
+        if ext in text_extensions:
+            return True
+
+    # Проверяем специальные имена файлов
+    filename = os.path.basename(file_path).lower()
+    special_names = {
+        'requirements', 'readme', 'license', 'changelog', 'contributing', 'authors',
+        'dockerfile', 'makefile', 'rakefile', 'gemfile', 'composer', 'package',
+        'webpack.config', 'vite.config', 'rollup.config', 'gulpfile', 'gruntfile',
+        'procfile', 'manifest', 'cargo.toml', 'pom.xml', 'build.gradle'
+    }
+
+    for name in special_names:
+        if name in filename:
+            return True
+
+    return False
 
 
 def get_file_content(repo_path, file_path):
@@ -20,40 +107,94 @@ def get_file_content(repo_path, file_path):
     if not os.path.exists(full_path):
         return None
 
+    # Проверяем, является ли файл текстовым
+    if not is_text_file(file_path):
+        # Для бинарных файлов показываем сообщение
+        try:
+            file_size = os.path.getsize(full_path)
+            if file_size > 10 * 1024 * 1024:  # Больше 10MB
+                return f"<pre>Файл слишком большой для просмотра ({file_size / (1024 * 1024):.1f} MB)</pre>"
+        except:
+            pass
+
     try:
-        with open(full_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Читаем файл с автоматическим определением кодировки
+        content, encoding_used = read_text_file(full_path)
 
         # Определяем язык по расширению файла
         lexer = TextLexer()
+        lang_map = {
+            'py': 'python',
+            'js': 'javascript',
+            'jsx': 'jsx',
+            'ts': 'typescript',
+            'tsx': 'tsx',
+            'html': 'html',
+            'htm': 'html',
+            'css': 'css',
+            'scss': 'scss',
+            'sass': 'sass',
+            'less': 'less',
+            'json': 'json',
+            'xml': 'xml',
+            'sql': 'sql',
+            'sh': 'bash',
+            'bash': 'bash',
+            'md': 'markdown',
+            'markdown': 'markdown',
+            'yaml': 'yaml',
+            'yml': 'yaml',
+            'java': 'java',
+            'cpp': 'cpp',
+            'c': 'c',
+            'h': 'c',
+            'cs': 'csharp',
+            'php': 'php',
+            'rb': 'ruby',
+            'go': 'go',
+            'rs': 'rust',
+            'swift': 'swift',
+            'kt': 'kotlin',
+            'kts': 'kotlin',
+            'r': 'r',
+            'pl': 'perl',
+            'pm': 'perl',
+            'lua': 'lua',
+            'scala': 'scala',
+            'groovy': 'groovy',
+            'dart': 'dart',
+            'ini': 'ini',
+            'toml': 'toml',
+            'cfg': 'ini',
+            'conf': 'ini',
+            'properties': 'properties',
+            'graphql': 'graphql',
+            'proto': 'protobuf'
+        }
+
+        # Определяем язык
+        language = 'text'
         if '.' in file_path:
             ext = file_path.split('.')[-1].lower()
-            lang_map = {
-                'py': 'python',
-                'js': 'javascript',
-                'html': 'html',
-                'htm': 'html',
-                'css': 'css',
-                'json': 'json',
-                'xml': 'xml',
-                'sql': 'sql',
-                'sh': 'bash',
-                'md': 'markdown',
-                'yaml': 'yaml',
-                'yml': 'yaml',
-                'java': 'java',
-                'cpp': 'cpp',
-                'c': 'c',
-                'php': 'php',
-                'rb': 'ruby',
-                'go': 'go',
-                'rs': 'rust'
-            }
             if ext in lang_map:
-                try:
-                    lexer = get_lexer_by_name(lang_map[ext])
-                except:
-                    lexer = TextLexer()
+                language = lang_map[ext]
+        else:
+            # Проверяем специальные имена файлов
+            filename = os.path.basename(file_path).lower()
+            if 'requirements' in filename:
+                language = 'text'  # Для requirements.txt
+            elif 'dockerfile' in filename:
+                language = 'docker'
+            elif 'makefile' in filename:
+                language = 'make'
+            elif filename in ['license', 'changelog', 'readme']:
+                language = 'markdown'
+
+        # Получаем лексер
+        try:
+            lexer = get_lexer_by_name(language)
+        except:
+            lexer = TextLexer()
 
         # Выбираем стиль в зависимости от темы
         theme = session.get('theme', 'light')
@@ -62,29 +203,27 @@ def get_file_content(repo_path, file_path):
         formatter = HtmlFormatter(style=style, cssclass="highlight")
         highlighted = highlight(content, lexer, formatter)
 
-        # Добавляем кнопку копирования для файлов кода (с текстом)
-        if ext in ['py', 'js', 'html', 'css', 'json', 'xml', 'sql', 'sh', 'md', 'yaml', 'yml', 'java', 'cpp', 'c',
-                   'php', 'rb', 'go', 'rs']:
-            # Экранируем кавычки для JavaScript
-            escaped_content = content.replace('\\', '\\\\').replace('"', '&quot;').replace('\n', '\\n').replace('\r',
-                                                                                                                '')
-            copy_button = f'''
-            <div class="code-header">
-                <span class="language-badge badge bg-secondary">{lang_map.get(ext, ext)}</span>
-                <button class="btn btn-sm btn-outline-secondary copy-btn" 
-                        onclick="copyCode(this)" 
-                        data-code="{escaped_content}">
-                    <i class="fas fa-copy"></i> Копировать
-                </button>
-            </div>
-            '''
-            return f'<div class="code-block-wrapper">{copy_button}<div class="file-content">{highlighted}</div></div>'
-        else:
-            return highlighted
+        # Добавляем информацию о кодировке и кнопку копирования
+        escaped_content = content.replace('\\', '\\\\').replace('"', '&quot;').replace('\n', '\\n').replace('\r', '')
+        copy_button = f'''
+        <div class="code-header">
+            <span class="language-badge badge bg-secondary">{language} ({encoding_used})</span>
+            <button class="btn btn-sm btn-outline-secondary copy-btn" 
+                    onclick="copyCode(this)" 
+                    data-code="{escaped_content}">
+                <i class="fas fa-copy"></i> Копировать
+            </button>
+        </div>
+        '''
+        return f'<div class="code-block-wrapper">{copy_button}<div class="file-content">{highlighted}</div></div>'
 
     except UnicodeDecodeError:
         # Бинарный файл
-        return "<pre>Бинарный файл - просмотр недоступен</pre>"
+        try:
+            file_size = os.path.getsize(full_path)
+            return f"<pre>Бинарный файл - просмотр недоступен ({file_size / 1024:.1f} KB)</pre>"
+        except:
+            return "<pre>Бинарный файл - просмотр недоступен</pre>"
     except Exception as e:
         return f"<pre>Ошибка: {str(e)}</pre>"
 
@@ -97,8 +236,8 @@ def get_readme_content(repo_path):
         readme_path = os.path.join(repo_path, readme_file)
         if os.path.exists(readme_path):
             try:
-                with open(readme_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                # Читаем README с автоматическим определением кодировки
+                content, _ = read_text_file(readme_path)
 
                 # Определяем тему для подсветки
                 theme = session.get('theme', 'light')
@@ -173,7 +312,7 @@ def index():
                     'last_commit_date': last_commit.committed_datetime.strftime('%Y-%m-%d'),
                     'branch': repo.active_branch.name if not repo.head.is_detached else 'detached'
                 })
-            except:
+            except Exception as e:
                 repos.append({
                     'name': name,
                     'last_commit': 'Ошибка загрузки',
