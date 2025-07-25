@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 # Получаем абсолютный путь к директории проекта
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-
 app = Flask(__name__,
             template_folder=os.path.join(basedir, 'templates'),
             static_folder=os.path.join(basedir, 'static'))
