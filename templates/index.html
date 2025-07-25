@@ -5,9 +5,14 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1>
-            <i class="fas fa-folder"></i> Репозитории
-        </h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>
+                <i class="fas fa-folder"></i> Репозитории
+            </h1>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRepoModal">
+                <i class="fas fa-plus"></i> Создать репозиторий
+            </button>
+        </div>
         <hr>
     </div>
 </div>
@@ -17,10 +22,11 @@
         {% if repos %}
             <div class="list-group">
                 {% for repo in repos %}
-                <a href="{{ url_for('view_repo', repo_name=repo.name) }}" class="list-group-item list-group-item-action">
+                <div class="list-group-item">
                     <div class="d-flex w-100 justify-content-between">
                         <h5 class="mb-1">
-                            <i class="fas fa-book"></i> {{ repo.name }}
+                            <i class="fas fa-book"></i>
+                            <a href="{{ url_for('view_repo', repo_name=repo.name) }}">{{ repo.name }}</a>
                         </h5>
                         <small class="text-muted">{{ repo.last_commit_date }}</small>
                     </div>
@@ -28,14 +34,122 @@
                     <small class="text-muted">
                         <i class="fas fa-code-branch"></i> {{ repo.branch }}
                     </small>
-                </a>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Clone: <code>git clone http://{{ request.host }}/git/{{ repo.name }}</code>
+                        </small>
+                    </div>
+                </div>
                 {% endfor %}
             </div>
         {% else %}
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Нет репозиториев. Добавьте их в папку <code>repos</code>.
+                <i class="fas fa-info-circle"></i> Нет репозиториев. Создайте новый или клонируйте существующий.
             </div>
         {% endif %}
     </div>
 </div>
+
+<!-- Модальное окно создания репозитория -->
+<div class="modal fade" id="createRepoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать репозиторий</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createRepoForm">
+                    <div class="mb-3">
+                        <label for="repoName" class="form-label">Имя репозитория</label>
+                        <input type="text" class="form-control" id="repoName" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно клонирования репозитория -->
+<div class="modal fade" id="cloneRepoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Клонировать репозиторий</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cloneRepoForm">
+                    <div class="mb-3">
+                        <label for="cloneUrl" class="form-label">URL репозитория</label>
+                        <input type="url" class="form-control" id="cloneUrl" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cloneName" class="form-label">Имя локального репозитория</label>
+                        <input type="text" class="form-control" id="cloneName" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Клонировать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Создание репозитория
+document.getElementById('createRepoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const repoName = document.getElementById('repoName').value;
+
+    fetch('/api/repos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({name: repoName})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Ошибка: ' + data.error);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+    });
+});
+
+// Клонирование репозитория
+document.getElementById('cloneRepoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const url = document.getElementById('cloneUrl').value;
+    const name = document.getElementById('cloneName').value;
+
+    fetch('/api/repos/' + encodeURIComponent(name) + '/clone', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({url: url})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Ошибка: ' + data.error);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+    });
+});
+</script>
 {% endblock %}

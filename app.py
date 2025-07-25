@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, abort, session, redirect
+from flask import Flask, render_template, request, abort, session, redirect, jsonify, flash
 import os
 import git
 import markdown
@@ -7,6 +7,10 @@ from pygments.lexers import get_lexer_by_name, TextLexer
 from pygments.formatters import HtmlFormatter
 import re
 import chardet
+import subprocess
+import shutil
+from urllib.parse import urlparse
+
 
 # Получаем абсолютный путь к директории проекта
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -21,30 +25,25 @@ REPOS_DIR = os.path.join(basedir, 'repos')
 os.makedirs(REPOS_DIR, exist_ok=True)
 
 
+# Функции для работы с файлами (остаются без изменений)
 def detect_encoding(file_path):
     """Определяет кодировку файла"""
     try:
         with open(file_path, 'rb') as f:
-            raw_data = f.read(10000)  # Читаем первые 10KB для определения кодировки
+            raw_data = f.read(10000)
             result = chardet.detect(raw_data)
             encoding = result['encoding']
             confidence = result['confidence']
-
-            # Если уверенность высокая, используем определенную кодировку
             if confidence > 0.7 and encoding:
                 return encoding
     except:
         pass
-
-    # По умолчанию пробуем UTF-8, затем другие популярные кодировки
     return None
 
 
 def read_text_file(file_path):
     """Читает текстовый файл с автоматическим определением кодировки"""
     encodings_to_try = ['utf-8', 'utf-8-sig', 'cp1251', 'cp1252', 'iso-8859-1', 'ascii']
-
-    # Сначала пробуем определить кодировку
     detected_encoding = detect_encoding(file_path)
     if detected_encoding:
         encodings_to_try.insert(0, detected_encoding)
@@ -55,17 +54,16 @@ def read_text_file(file_path):
                 return f.read(), encoding
         except (UnicodeDecodeError, UnicodeError):
             continue
-        except Exception as e:
+        except Exception:
             continue
 
-    # Если все кодировки не сработали, пробуем игнорировать ошибки
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read(), 'utf-8 (с игнорированием ошибок)'
     except:
         pass
 
-    raise Exception("Не удалось прочитать файл с поддерживаемыми кодировками")
+    raise Exception("Не удалось прочитать файл")
 
 
 def is_text_file(file_path):
@@ -79,13 +77,11 @@ def is_text_file(file_path):
         'bat', 'cmd', 'ps1', 'vbs', 'sql', 'graphql', 'proto'
     }
 
-    # Проверяем по расширению
     if '.' in file_path:
         ext = file_path.split('.')[-1].lower()
         if ext in text_extensions:
             return True
 
-    # Проверяем специальные имена файлов
     filename = os.path.basename(file_path).lower()
     special_names = {
         'requirements', 'readme', 'license', 'changelog', 'contributing', 'authors',
@@ -429,6 +425,178 @@ def view_repo(repo_name, subpath=''):
 
     except Exception as e:
         return f"Ошибка при открытии репозитория: {e}", 500
+
+
+# 🚀 НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ РЕПОЗИТОРИЯМИ
+
+@app.route('/api/repos', methods=['GET'])
+def api_list_repos():
+    """API: Получить список репозиториев"""
+    repos = []
+    for name in os.listdir(REPOS_DIR):
+        repo_path = os.path.join(REPOS_DIR, name)
+        if os.path.isdir(repo_path):
+            try:
+                repo = git.Repo(repo_path)
+                last_commit = next(repo.iter_commits(max_count=1))
+                repos.append({
+                    'name': name,
+                    'last_commit': last_commit.summary,
+                    'last_commit_date': last_commit.committed_datetime.isoformat(),
+                    'branch': repo.active_branch.name if not repo.head.is_detached else 'detached'
+                })
+            except:
+                repos.append({
+                    'name': name,
+                    'last_commit': 'Ошибка загрузки',
+                    'last_commit_date': '',
+                    'branch': 'unknown'
+                })
+    return jsonify(repos)
+
+
+@app.route('/api/repos', methods=['POST'])
+def api_create_repo():
+    """API: Создать новый репозиторий"""
+    try:
+        data = request.get_json()
+        repo_name = data.get('name')
+
+        if not repo_name:
+            return jsonify({'error': 'Не указано имя репозитория'}), 400
+
+        repo_path = os.path.join(REPOS_DIR, repo_name)
+
+        if os.path.exists(repo_path):
+            return jsonify({'error': 'Репозиторий уже существует'}), 400
+
+        # Создаем bare репозиторий (для сервера)
+        repo = git.Repo.init(repo_path, bare=True)
+
+        return jsonify({'message': f'Репозиторий {repo_name} создан успешно'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/repos/<repo_name>/clone', methods=['POST'])
+def api_clone_repo(repo_name):
+    """API: Клонировать внешний репозиторий"""
+    try:
+        data = request.get_json()
+        source_url = data.get('url')
+
+        if not source_url:
+            return jsonify({'error': 'Не указан URL источника'}), 400
+
+        repo_path = os.path.join(REPOS_DIR, repo_name)
+
+        if os.path.exists(repo_path):
+            return jsonify({'error': 'Репозиторий уже существует'}), 400
+
+        # Клонируем репозиторий
+        repo = git.Repo.clone_from(source_url, repo_path, bare=True)
+
+        return jsonify({'message': f'Репозиторий клонирован успешно в {repo_name}'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/repos/<repo_name>/delete', methods=['DELETE'])
+def api_delete_repo(repo_name):
+    """API: Удалить репозиторий"""
+    try:
+        repo_path = os.path.join(REPOS_DIR, repo_name)
+
+        if not os.path.exists(repo_path):
+            return jsonify({'error': 'Репозиторий не найден'}), 404
+
+        # Удаляем папку с репозиторием
+        shutil.rmtree(repo_path)
+
+        return jsonify({'message': f'Репозиторий {repo_name} удален успешно'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# 🌐 Добавим поддержку Git HTTP протокола
+@app.route('/git/<repo_name>/info/refs')
+def git_info_refs(repo_name):
+    """Git HTTP Info References"""
+    repo_path = os.path.join(REPOS_DIR, repo_name)
+    if not os.path.exists(repo_path):
+        abort(404)
+
+    service = request.args.get('service')
+    if service:
+        # Это Git Smart HTTP протокол
+        env = os.environ.copy()
+        env['GIT_HTTP_EXPORT_ALL'] = '1'
+
+        try:
+            result = subprocess.run([
+                'git', 'upload-pack', '--stateless-rpc', '--advertise-refs', repo_path
+            ], capture_output=True, env=env)
+
+            response = b'001e# service=git-upload-pack\n0000' + result.stdout
+            return response, 200, {'Content-Type': 'application/x-git-upload-pack-advertisement'}
+        except Exception as e:
+            abort(500)
+
+    abort(400)
+
+
+@app.route('/git/<repo_name>/git-upload-pack', methods=['POST'])
+def git_upload_pack(repo_name):
+    """Git Upload Pack - для fetch/pull"""
+    repo_path = os.path.join(REPOS_DIR, repo_name)
+    if not os.path.exists(repo_path):
+        abort(404)
+
+    try:
+        # Запускаем git-upload-pack
+        env = os.environ.copy()
+        process = subprocess.Popen([
+            'git', 'upload-pack', '--stateless-rpc', repo_path
+        ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+
+        stdout, stderr = process.communicate(request.data)
+
+        if process.returncode != 0:
+            abort(500)
+
+        return stdout, 200, {'Content-Type': 'application/x-git-upload-pack-result'}
+    except Exception as e:
+        abort(500)
+
+
+@app.route('/git/<repo_name>/git-receive-pack', methods=['POST'])
+def git_receive_pack(repo_name):
+    """Git Receive Pack - для push"""
+    repo_path = os.path.join(REPOS_DIR, repo_name)
+    if not os.path.exists(repo_path):
+        abort(404)
+
+    try:
+        # Запускаем git-receive-pack
+        env = os.environ.copy()
+        process = subprocess.Popen([
+            'git', 'receive-pack', '--stateless-rpc', repo_path
+        ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+
+        stdout, stderr = process.communicate(request.data)
+
+        if process.returncode != 0:
+            abort(500)
+
+        return stdout, 200, {'Content-Type': 'application/x-git-receive-pack-result'}
+    except Exception as e:
+        abort(500)
+
+
+
 
 
 if __name__ == '__main__':
