@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo_name }} - Git Web UI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('index') }}">
+                        <i class="fas fa-home"></i> Репозитории
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('view_repo', repo_name=repo_name) }}">
+                        <i class="fas fa-book"></i> {{ repo_name }}
+                    </a>
+                </li>
+                {% for part in path_parts %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('view_repo', repo_name=repo_name, subpath=part.path) }}">
+                        {{ part.name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ol>
+        </nav>
+
+        <h1>
+            <i class="fas fa-book"></i> {{ repo_name }}
+            {% if current_path %}
+                / {{ current_path }}
+            {% endif %}
+        </h1>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-folder-open"></i> Содержимое
+            </div>
+            <div class="card-body">
+                {% if tree_items %}
+                    <div class="list-group">
+                        {% for item in tree_items %}
+                        <a href="{{ url_for('view_repo', repo_name=repo_name, subpath=item.path) }}"
+                           class="list-group-item list-group-item-action">
+                            <div class="d-flex align-items-center">
+                                {% if item.type == 'dir' %}
+                                    <i class="fas fa-folder folder-icon me-2"></i>
+                                {% else %}
+                                    <i class="fas fa-file file-icon me-2"></i>
+                                {% endif %}
+                                <span>{{ item.name }}</span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Папка пуста
+                    </div>
+                {% endif %}
+
+                <!-- README.md content -->
+                {% if readme_content is not none and not current_path %}
+                    <div class="readme-content mt-4">
+                        <h3>
+                            <i class="fas fa-book-open"></i> README.md
+                        </h3>
+                        <hr>
+                        <div class="readme-body">
+                            {{ readme_content|safe }}
+                        </div>
+                    </div>
+                {% elif not current_path %}
+                    <div class="alert alert-info mt-4">
+                        <i class="fas fa-info-circle"></i> Файл README.md не найден в корне репозитория
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-history"></i> Последние коммиты
+            </div>
+            <div class="card-body">
+                {% if commits %}
+                    <div class="list-group">
+                        {% for commit in commits %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ commit.summary[:50] }}{% if commit.summary|length > 50 %}...{% endif %}</strong>
+                                <span class="commit-hash text-muted">{{ commit.hexsha[:8] }}</span>
+                            </div>
+                            <small class="text-muted">
+                                {{ commit.author }}<br>
+                                {{ commit.committed_datetime.strftime('%Y-%m-%d %H:%M') }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Нет коммитов
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyCode(button) {
+    const code = button.getAttribute('data-code');
+    navigator.clipboard.writeText(code.replace(/\\n/g, '\n')).then(() => {
+        // Показываем "Скопировано"
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.classList.remove('copied');
+        }, 2000);
+    }).catch(err => {
+        console.error('Ошибка копирования: ', err);
+        // Альтернативный способ копирования
+        const textArea = document.createElement('textarea');
+        textArea.value = code.replace(/\\n/g, '\n');
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.classList.remove('copied');
+            }, 2000);
+        } catch (err) {
+            alert('Не удалось скопировать текст');
+        }
+        document.body.removeChild(textArea);
+    });
+}
+</script>
+{% endblock %}

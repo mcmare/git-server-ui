@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="{{ theme or 'light' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Git Web UI{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/fontawesome.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-code-branch"></i> Git Web UI
+            </a>
+            <div class="d-flex">
+                <a href="{{ url_for('toggle_theme', return_to=request.url) }}" class="btn btn-outline-light btn-sm">
+                    {% if theme == 'dark' %}
+                        <i class="fas fa-sun"></i>
+                    {% else %}
+                        <i class="fas fa-moon"></i>
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

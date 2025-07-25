@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Репозитории - Git Web UI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>
+            <i class="fas fa-folder"></i> Репозитории
+        </h1>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if repos %}
+            <div class="list-group">
+                {% for repo in repos %}
+                <a href="{{ url_for('view_repo', repo_name=repo.name) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">
+                            <i class="fas fa-book"></i> {{ repo.name }}
+                        </h5>
+                        <small class="text-muted">{{ repo.last_commit_date }}</small>
+                    </div>
+                    <p class="mb-1">{{ repo.last_commit }}</p>
+                    <small class="text-muted">
+                        <i class="fas fa-code-branch"></i> {{ repo.branch }}
+                    </small>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Нет репозиториев. Добавьте их в папку <code>repos</code>.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
