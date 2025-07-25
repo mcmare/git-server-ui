@@ -11,7 +11,6 @@ import subprocess
 import shutil
 from urllib.parse import urlparse
 
-
 # Получаем абсолютный путь к директории проекта
 basedir = os.path.abspath(os.path.dirname(__file__))
 
